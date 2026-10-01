@@ -10,9 +10,8 @@
 #include <unistd.h>
 #include <stddef.h>
 
-#if defined(__unix__) || defined(__APPLE__) || defined(__linux__)
-#else
-  #error "Unsupported operating system"
+#if !defined(__linux__)
+#error "arena_hugepage_alloc currently requires Linux"
 #endif
 
 #ifndef COMPILER_FLAGS_H

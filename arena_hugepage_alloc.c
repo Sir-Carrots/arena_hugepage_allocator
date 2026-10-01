@@ -1,4 +1,5 @@
 #include "arena_hugepage_alloc.h"
+#include <stddef.h>
 #include <sys/mman.h>
 
 INLINE void* new_HP_helper() {
@@ -13,7 +14,7 @@ INLINE void* new_HP_helper() {
 arena new_HP() {
   void* page_addr = new_HP_helper();
   if (page_addr == MAP_FAILED) {return (arena){NULL, NULL, NONE};}
-  return (arena){page_addr, (unsigned char *)page_addr + PAGE_HEADER_SIZE, HP};
+  return (arena){page_addr, (void *)((size_t)page_addr + PAGE_HEADER_SIZE), HP};
 }
 
 INLINE void* new_GP_helper() {
@@ -28,7 +29,7 @@ INLINE void* new_GP_helper() {
 arena new_GP() {
   void* page_addr = new_GP_helper();
   if (page_addr == MAP_FAILED) {return (arena){NULL, NULL, NONE};}
-  return (arena){page_addr, (unsigned char *)page_addr + PAGE_HEADER_SIZE, GP};
+  return (arena){page_addr, (void *)((size_t)page_addr + PAGE_HEADER_SIZE), GP};
 }
 
 INLINE void* new_THP_helper() {
@@ -49,7 +50,7 @@ INLINE void* new_THP_helper() {
 arena new_THP() {
   void* page_addr = new_THP_helper();
   if (page_addr == MAP_FAILED) {return (arena){NULL, NULL, NONE};}
-  return (arena){page_addr, (unsigned char *)page_addr + PAGE_HEADER_SIZE, THP};
+  return (arena){page_addr, (void *)((size_t)page_addr + PAGE_HEADER_SIZE), THP};
 }
 
 void *ahalloc (arena *arena_ptr, size_t size) {
@@ -58,7 +59,7 @@ void *ahalloc (arena *arena_ptr, size_t size) {
   else if (arena_ptr->page_type == GP && size > (HUGEPAGE_1GB - PAGE_HEADER_SIZE)) {return NULL;}
 
   else if (arena_ptr->page_type == HP 
-          && ((unsigned char *)arena_ptr->bump_pointer + size) > ((unsigned char *)arena_ptr->page_addr + HUGEPAGE_2MB)) {
+          && ((size_t)arena_ptr->bump_pointer + size) > ((size_t)arena_ptr->page_addr + HUGEPAGE_2MB)) {
     void *loop_addr = *(void **)arena_ptr->page_addr;
     while (loop_addr != NULL) {
       loop_addr = *(void **)loop_addr;
