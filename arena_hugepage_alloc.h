@@ -4,6 +4,56 @@
 #define HUGEPAGE_1GB (1ULL * 1024 * 1024 * 1024)
 #include <sys/mman.h>
 #include <unistd.h>
+
+#if defined(__unix__) || defined(__APPLE__) || defined(__linux__)
+#else
+  #error "Unsupported operating system"
+#endif
+
+#ifndef COMPILER_FLAGS_H
+#define COMPILER_FLAGS_H
+
+#if defined(_MSC_VER)
+    #define INLINE static __forceinline
+
+#elif defined(__GNUC__) || defined(__clang__)
+    #define INLINE static inline __attribute__((always_inline))
+
+#else
+    #define INLINE static inline
+#endif
+
+
+#ifndef __has_c_attribute
+    #define __has_c_attribute(x) 0
+#endif
+
+#ifndef __has_attribute
+    #define __has_attribute(x) 0
+#endif
+
+
+#if defined(__clang__)
+    #if __has_attribute(musttail)
+        #define MUSTTAIL [[clang::musttail]]
+    #else
+        #define MUSTTAIL
+    #endif
+
+#elif defined(__GNUC__)
+    #if __has_c_attribute(gnu::musttail)
+        #define MUSTTAIL [[gnu::musttail]]
+    #elif __has_attribute(musttail)
+        #define MUSTTAIL __attribute__((musttail))
+    #else
+        #define MUSTTAIL
+    #endif
+
+#else
+    #define MUSTTAIL
+#endif
+
+#endif
 typedef enum page_type : unsigned char{
   HP,
   THP,
