@@ -1,12 +1,12 @@
 # arena_hugepage_alloc
 
-A small C arena allocator built around Linux huge pages.
+A small C arena allocator built around Linux hugepages.
 
 > **Status:** Proof of concept / MVP
 
 `arena_hugepage_alloc` is an arena-based allocator that obtains large memory mappings and performs bump-pointer allocation inside them. The current implementation is intentionally small and focused on exploring the fundamentals of huge-page-backed arena allocation.
 
-This project is **Linux-only for now**. Linux is the only platform I currently have access to for development and testing, so the implementation deliberately targets Linux-specific memory facilities. A more portable implementation, along with a more general heap huge-page allocator, is planned for the future.
+This project is **Linux-only for now**. Linux is the only platform I currently have access to for development and testing (being a highschool student and all), so the implementation deliberately targets Linux-specific memory facilities. A more portable implementation (as I learn the memory models of other OSes), along with a more general heap huge-page allocator, is planned for the future.
 
 ## What it does
 
@@ -14,7 +14,7 @@ The allocator currently supports three page modes:
 
 - **HP** — 2 MiB Linux HugeTLB pages (`MAP_HUGETLB | MAP_HUGE_2MB`)
 - **GP** — 1 GiB Linux HugeTLB pages (`MAP_HUGETLB | MAP_HUGE_1GB`)
-- **THP** — 2 MiB anonymous mappings marked with `MADV_HUGEPAGE`, requesting Transparent Huge Page backing
+- **THP** — 2 MiB anonymous mappings marked with `MADV_HUGEPAGE`, requesting Transparent hugepage backing
 
 The allocator is an **arena allocator**: individual allocations are not freed. Instead, the entire arena and all of its pages are released together with `ahfree()`.
 
@@ -60,6 +60,12 @@ Clang can be used similarly:
 clang -std=c23 -O2 -Wall -Wextra -Wpedantic main.c arena_hugepage_alloc.c -o example
 ```
 
+I don't use MSVC enough to know how compilation on it works. (I just looked up the compiler flags for it)
+
+>Note
+> 
+> I recommend using THPs most often because the number of hugepages on a system are limited, and thus should be used only necessarily. THPs are different; the explanation is a little further down
+
 ### Choosing an arena type
 
 Create an arena with one of the constructors:
@@ -92,20 +98,7 @@ Each arena starts with one memory page/mapping. A small header at the beginning 
 
 Conceptually, a page looks like this:
 
-```text
-+----------------------------+
-| next page pointer          |
-+----------------------------+
-| alignment padding          |
-+----------------------------+
-|                            |
-|        allocation A        |
-|        allocation B        |
-|        allocation C        |
-|             ...            |
-|                            |
-+----------------------------+
-```
+![Hugepage usage](images/Hugepage.png)
 
 The arena keeps three important addresses:
 
@@ -129,11 +122,11 @@ When `ahfree()` is called, the allocator walks the page chain and unmaps every p
 
 The allocator reserves a page header whose size is rounded to the alignment of `max_align_t`. Allocation sizes are aligned accordingly so that returned addresses maintain the allocator's fundamental alignment guarantee.
 
-## Huge pages and system requirements
+## hugepages and system requirements
 
 The **HP** and **GP** modes use Linux HugeTLB mappings. Their success therefore depends on the corresponding huge-page sizes being available on the system.
 
-The **THP** mode instead uses a normal anonymous mapping and requests Transparent Huge Page backing with `madvise(..., MADV_HUGEPAGE)`. This is a request to the kernel rather than a guarantee that every mapping will ultimately be backed by a transparent huge page.
+The **THP** mode is a little more complex. On linux, there are some things called transparent hugepages, which are just normal pages that are contiguous with each other. As I understand, unlike hugepages, which are formed on startup, Linux can make or fragment THPs during runtime. As a result, I recommend this mode most often: you don't want to use up all the hugepages on your system.
 
 If a page mapping fails, the relevant constructor or allocation returns failure rather than inserting the failed mapping into the arena.
 
@@ -143,22 +136,13 @@ Arena allocation is useful when many allocations share a lifetime. Instead of tr
 
 The bump-pointer design also gives the allocation path a very simple memory-access pattern: allocations proceed sequentially through the current page, while older pages are only traversed when the arena is destroyed.
 
-## Project status
-
-This repository is currently a **proof of concept** for a more general heap allocator built around huge pages.
-
-The implementation is intentionally minimal at this stage. More extensive benchmarking, profiling, testing, and evaluation are still required, and benchmarking will be added shortly.
-
-The longer-term goal is a more general huge-page-backed heap allocator rather than only the arena model presented here.
-
 ## Platform support
 
 Currently supported:
 
 - Linux
 
-Other platforms are intentionally rejected by the header at compile time. I only have access to Linux hardware for development and testing at the moment, so portability will be addressed later rather than being implied by the current interface.
-
+Other platforms are intentionally rejected by the header at compile time. Sorry!
 ## Contributing
 
 Contributions, bug reports, performance experiments, portability work, tests, documentation improvements, and other ideas are welcome.
