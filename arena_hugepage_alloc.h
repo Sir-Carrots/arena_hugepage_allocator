@@ -2,8 +2,13 @@
 
 #define HUGEPAGE_2MB (2 * 1024 * 1024)
 #define HUGEPAGE_1GB (1ULL * 1024 * 1024 * 1024)
+#define PAGE_HEADER_SIZE \
+    ((sizeof(void *) + _Alignof(max_align_t) - 1) / \
+     _Alignof(max_align_t) * _Alignof(max_align_t))
+
 #include <sys/mman.h>
 #include <unistd.h>
+#include <stddef.h>
 
 #if defined(__unix__) || defined(__APPLE__) || defined(__linux__)
 #else
