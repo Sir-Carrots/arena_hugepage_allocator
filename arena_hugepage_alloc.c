@@ -62,6 +62,7 @@ void *ahalloc (arena *arena_ptr, size_t size) {
   else if (arena_ptr->page_type == HP 
           && ((size_t)arena_ptr->bump_pointer + size) > ((size_t)arena_ptr->current_page + HUGEPAGE_2MB)) {
     void *temp_addr = new_HP_helper();
+    if (temp_addr == MAP_FAILED) {return NULL;}
     *(void **)arena_ptr->current_page = temp_addr;
     arena_ptr->current_page = temp_addr;
     arena_ptr->bump_pointer = (void *)((size_t)arena_ptr->current_page + PAGE_HEADER_SIZE);
@@ -69,6 +70,7 @@ void *ahalloc (arena *arena_ptr, size_t size) {
   else if (arena_ptr->page_type == THP 
           && ((unsigned char *)arena_ptr->bump_pointer + size) > ((unsigned char *)arena_ptr->current_page + HUGEPAGE_2MB)) {
     void *temp_addr = new_THP_helper();
+    if (temp_addr == MAP_FAILED) {return NULL;}
     *(void **)arena_ptr->current_page = temp_addr;
     arena_ptr->current_page = temp_addr;
     arena_ptr->bump_pointer = (void *)((size_t)arena_ptr->current_page + PAGE_HEADER_SIZE);
@@ -76,6 +78,7 @@ void *ahalloc (arena *arena_ptr, size_t size) {
   else if (arena_ptr->page_type == GP 
           && ((unsigned char *)arena_ptr->bump_pointer + size) > ((unsigned char *)arena_ptr->current_page + HUGEPAGE_1GB)) {
     void *temp_addr = new_GP_helper();
+    if (temp_addr == MAP_FAILED) {return NULL;}
     *(void **)arena_ptr->current_page = temp_addr;
     arena_ptr->current_page = temp_addr;
     arena_ptr->bump_pointer = (void *)((size_t)arena_ptr->current_page + PAGE_HEADER_SIZE);
