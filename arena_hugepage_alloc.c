@@ -117,6 +117,7 @@ int ahfree (arena *arena_ptr) {
   }
   arena_ptr->page_addr = NULL;
   arena_ptr->bump_pointer = NULL;
+  arena_ptr->current_page = NULL;
   arena_ptr->page_type = NONE;
   return 0;
 }
