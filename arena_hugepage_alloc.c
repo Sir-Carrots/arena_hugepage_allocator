@@ -45,7 +45,7 @@ arena new_THP() {
   return (arena){page_addr, (char *)page_addr + sizeof(void *), THP};
 }
 
-void *halloc (arena *arena_ptr, size_t size) {
+void *ahalloc (arena *arena_ptr, size_t size) {
   if (arena_ptr->page_type == NONE) {return NULL;}
   else if (arena_ptr->page_type == HP || arena_ptr->page_type == THP && size > HUGEPAGE_2MB) {return NULL;}
   else if (arena_ptr->page_type == GP && size > HUGEPAGE_1GB) {return NULL;}
@@ -86,7 +86,7 @@ static int free_GP (void *page_addr, int accumulator) {
   MUSTTAIL return free_GP(next_page, accumulator);
 }
 
-int hfree (arena *arena_ptr) {
+int ahfree (arena *arena_ptr) {
   switch (arena_ptr->page_type) {
     case THP:
     case HP:
