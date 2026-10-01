@@ -64,24 +64,25 @@ void *ahalloc (arena *arena_ptr, size_t size) {
     void *temp_addr = new_HP_helper();
     *(void **)arena_ptr->current_page = temp_addr;
     arena_ptr->current_page = temp_addr;
-    arena_ptr->bump_pointer = arena_ptr->current_page + PAGE_HEADER_SIZE;
+    arena_ptr->bump_pointer = (void *)((size_t)arena_ptr->current_page + PAGE_HEADER_SIZE);
   }
   else if (arena_ptr->page_type == THP 
           && ((unsigned char *)arena_ptr->bump_pointer + size) > ((unsigned char *)arena_ptr->current_page + HUGEPAGE_2MB)) {
     void *temp_addr = new_THP_helper();
     *(void **)arena_ptr->current_page = temp_addr;
     arena_ptr->current_page = temp_addr;
-    arena_ptr->bump_pointer = arena_ptr->current_page + PAGE_HEADER_SIZE;
+    arena_ptr->bump_pointer = (void *)((size_t)arena_ptr->current_page + PAGE_HEADER_SIZE);
   }
   else if (arena_ptr->page_type == GP 
           && ((unsigned char *)arena_ptr->bump_pointer + size) > ((unsigned char *)arena_ptr->current_page + HUGEPAGE_1GB)) {
     void *temp_addr = new_GP_helper();
     *(void **)arena_ptr->current_page = temp_addr;
     arena_ptr->current_page = temp_addr;
-    arena_ptr->bump_pointer = arena_ptr->current_page + PAGE_HEADER_SIZE;
+    arena_ptr->bump_pointer = (void *)((size_t)arena_ptr->current_page + PAGE_HEADER_SIZE);
   }
-
-  return (void *)((arena_ptr->bump_pointer += size) - size);
+  void *result = arena_ptr->bump_pointer;
+  arena_ptr->bump_pointer = (void *)((unsigned char *)arena_ptr->bump_pointer + size);
+  return result;
 }
 
 static int free_HP (void *page_addr, int accumulator) {
