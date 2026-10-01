@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "arena_hugepage_alloc.h"
 #include <stddef.h>
 #include <sys/mman.h>
@@ -6,15 +7,15 @@ INLINE void* new_HP_helper() {
   return mmap(NULL,
               HUGEPAGE_2MB,
               PROT_READ | PROT_WRITE,
-              MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB,
+              MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | MAP_HUGE_2MB,
               -1,
               0);
 }
 
 arena new_HP() {
   void* page_addr = new_HP_helper();
-  if (page_addr == MAP_FAILED) {return (arena){NULL, NULL, NONE};}
-  return (arena){page_addr, (void *)((size_t)page_addr + PAGE_HEADER_SIZE), HP};
+  if (page_addr == MAP_FAILED) {return (arena){NULL,NULL, NULL, NONE};}
+  return (arena){page_addr,page_addr, (void *)((size_t)page_addr + PAGE_HEADER_SIZE), HP};
 }
 
 INLINE void* new_GP_helper() {
@@ -28,15 +29,15 @@ INLINE void* new_GP_helper() {
 
 arena new_GP() {
   void* page_addr = new_GP_helper();
-  if (page_addr == MAP_FAILED) {return (arena){NULL, NULL, NONE};}
-  return (arena){page_addr, (void *)((size_t)page_addr + PAGE_HEADER_SIZE), GP};
+  if (page_addr == MAP_FAILED) {return (arena){NULL, NULL, NULL, NONE};}
+  return (arena){page_addr, page_addr, (void *)((size_t)page_addr + PAGE_HEADER_SIZE), GP};
 }
 
 INLINE void* new_THP_helper() {
   void *pre_formed_THP = mmap(NULL,
               HUGEPAGE_2MB,
               PROT_READ | PROT_WRITE,
-              MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGE_2MB,
+              MAP_PRIVATE | MAP_ANONYMOUS,
               -1,
               0);
   if (pre_formed_THP == MAP_FAILED) {return pre_formed_THP;}
@@ -49,8 +50,8 @@ INLINE void* new_THP_helper() {
 
 arena new_THP() {
   void* page_addr = new_THP_helper();
-  if (page_addr == MAP_FAILED) {return (arena){NULL, NULL, NONE};}
-  return (arena){page_addr, (void *)((size_t)page_addr + PAGE_HEADER_SIZE), THP};
+  if (page_addr == MAP_FAILED) {return (arena){NULL, NULL, NULL, NONE};}
+  return (arena){page_addr, page_addr, (void *)((size_t)page_addr + PAGE_HEADER_SIZE), THP};
 }
 
 void *ahalloc (arena *arena_ptr, size_t size) {
@@ -59,31 +60,34 @@ void *ahalloc (arena *arena_ptr, size_t size) {
   else if (arena_ptr->page_type == GP && size > (HUGEPAGE_1GB - PAGE_HEADER_SIZE)) {return NULL;}
 
   else if (arena_ptr->page_type == HP 
-          && ((size_t)arena_ptr->bump_pointer + size) > ((size_t)arena_ptr->page_addr + HUGEPAGE_2MB)) {
+          && ((size_t)arena_ptr->bump_pointer + size) > ((size_t)arena_ptr->current_page + HUGEPAGE_2MB)) {
+    arena_ptr->current_page = new_HP_helper();
     void *loop_addr = *(void **)arena_ptr->page_addr;
     while (loop_addr != NULL) {
       loop_addr = *(void **)loop_addr;
     }
-    loop_addr = new_HP_helper();
-    arena_ptr->bump_pointer = loop_addr + sizeof(void *);
+    loop_addr = arena_ptr->current_page;
+    arena_ptr->bump_pointer = arena_ptr->current_page + PAGE_HEADER_SIZE;
   }
   else if (arena_ptr->page_type == THP 
-          && ((unsigned char *)arena_ptr->bump_pointer + size) > ((unsigned char *)arena_ptr->page_addr + HUGEPAGE_2MB)) {
+          && ((unsigned char *)arena_ptr->bump_pointer + size) > ((unsigned char *)arena_ptr->current_page + HUGEPAGE_2MB)) {
+    arena_ptr->current_page = new_THP_helper();
     void *loop_addr = *(void **)arena_ptr->page_addr;
     while (loop_addr != NULL) {
       loop_addr = *(void **)loop_addr;
     }
-    loop_addr = new_HP_helper();
-    arena_ptr->bump_pointer = loop_addr + sizeof(void *);
+    loop_addr = arena_ptr->current_page;
+    arena_ptr->bump_pointer = arena_ptr->current_page + PAGE_HEADER_SIZE;
   }
   else if (arena_ptr->page_type == GP 
-          && ((unsigned char *)arena_ptr->bump_pointer + size) > ((unsigned char *)arena_ptr->page_addr + HUGEPAGE_1GB)) {
+          && ((unsigned char *)arena_ptr->bump_pointer + size) > ((unsigned char *)arena_ptr->current_page + HUGEPAGE_1GB)) {
+    arena_ptr->current_page = new_GP_helper();
     void *loop_addr = *(void **)arena_ptr->page_addr;
     while (loop_addr != NULL) {
       loop_addr = *(void **)loop_addr;
     }
-    loop_addr = new_HP_helper();
-    arena_ptr->bump_pointer = loop_addr + sizeof(void *);
+    loop_addr = arena_ptr->current_page;
+    arena_ptr->bump_pointer = arena_ptr->current_page + PAGE_HEADER_SIZE;
   }
 
   return (void *)((arena_ptr->bump_pointer += size) - size);
@@ -108,8 +112,10 @@ int ahfree (arena *arena_ptr) {
     case THP:
     case HP:
       if(free_HP(arena_ptr->page_addr, 0) != 0) {return -1;}
+      break;
     case GP:
       if(free_GP(arena_ptr->page_addr, 0) != 0) {return -1;}
+      break;
     case NONE:
     default:
       return -1;
@@ -117,4 +123,5 @@ int ahfree (arena *arena_ptr) {
   arena_ptr->page_addr = NULL;
   arena_ptr->bump_pointer = NULL;
   arena_ptr->page_type = NONE;
+  return 0;
 }

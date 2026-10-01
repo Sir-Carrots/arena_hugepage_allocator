@@ -67,6 +67,7 @@ typedef enum page_type : unsigned char{
 
 typedef struct arena {
   void *page_addr;
+  void *current_page;
   void *bump_pointer;
   page_type page_type;
 } arena;
