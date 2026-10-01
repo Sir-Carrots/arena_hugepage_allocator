@@ -58,6 +58,7 @@
 #endif
 
 #endif
+
 typedef enum page_type : unsigned char{
   HP,
   THP,
