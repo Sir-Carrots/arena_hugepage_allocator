@@ -55,6 +55,9 @@ arena new_THP() {
 }
 
 void *ahalloc (arena *arena_ptr, size_t size) {
+  size_t alignment = _Alignof(max_align_t);
+  size_t remainder = size % alignment;
+  size += alignment - remainder;
   if (arena_ptr->page_type == NONE) {return NULL;}
   else if ((arena_ptr->page_type == HP || arena_ptr->page_type == THP) && size > (HUGEPAGE_2MB - PAGE_HEADER_SIZE)) {return NULL;}
   else if (arena_ptr->page_type == GP && size > (HUGEPAGE_1GB - PAGE_HEADER_SIZE)) {return NULL;}
