@@ -60,10 +60,10 @@
 #endif
 
 typedef enum page_type : unsigned char{
+  NONE,
   HP,
   THP,
   GP,
-  NONE,
 } page_type;
 
 typedef struct arena {
