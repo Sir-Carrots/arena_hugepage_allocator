@@ -151,4 +151,4 @@ This is an early project, so experimentation and constructive feedback are espec
 
 ## License
 
-This project is released under the [MIT License](LICENSE).
+This project is released under the MIT License
