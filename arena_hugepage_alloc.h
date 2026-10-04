@@ -59,7 +59,7 @@
 
 #endif
 
-typedef enum page_type : unsigned char{
+typedef enum page_type : unsigned char {
   NONE,
   HP,
   THP,

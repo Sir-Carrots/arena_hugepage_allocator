@@ -1,7 +1,5 @@
 #define _GNU_SOURCE
 #include "arena_hugepage_alloc.h"
-#include <stddef.h>
-#include <sys/mman.h>
 
 INLINE void* new_HP_helper() {
   return mmap(NULL,
@@ -68,7 +66,7 @@ void *ahalloc (arena *arena_ptr, size_t size) {
   
   size_t alignment = _Alignof(max_align_t);
   size_t remainder = size % alignment;
-  size += alignment - remainder;
+  if (remainder != 0) {size += alignment - remainder;}
 
   //Taking care of invalid/ impossible sub allocation requests.
 
